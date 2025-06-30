@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA - Your Career Co-Pilot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a18; /* Dark purple/blue background */
+            color: #e2e8f0; /* Light text color */
+            overflow: hidden; 
+        }
+
+        /* --- VEO Video Intro Styles --- */
+        #video-intro-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 1.5s ease-in-out;
+        }
+        #intro-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+        }
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .overlay-text {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+            opacity: 0;
+            animation: fadeInText 3s ease-in forwards;
+        }
+        @keyframes fadeInText {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* --- Main App Styles --- */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #0c0a18;
+        }
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle linear infinite;
+        }
+        @keyframes twinkle {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        #app-container {
+            position: relative;
+            z-index: 1;
+            height: 100vh;
+            overflow-y: auto;
+            opacity: 0;
+            transition: opacity 1s ease-in-out 0.5s;
+        }
+
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        .fade-out { animation: fadeOut 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+        .progress-bar-fill { transition: width 0.5s ease-in-out; }
+        .card-option { transition: all 0.2s ease-in-out; background-color: #1e293b; border-color: #334155; }
+        .card-option:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); border-color: #4f46e5; }
+        .card-option.selected { border-color: #6366f1; background-color: #312e81; }
+        .gemini-response { white-space: pre-wrap; }
+        .loader {
+            border: 4px solid #334155;
+            border-top: 4px solid #6366f1;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .typewriter h1 {
+            overflow: hidden; 
+            border-right: .15em solid #6366f1; 
+            white-space: nowrap; 
+            margin: 0 auto; 
+            letter-spacing: .1em; 
+            animation: 
+                typing-main 3.5s steps(40, end),
+                blink-caret .75s step-end infinite;
+        }
+        @keyframes typing-main { from { width: 0 } to { width: 100% } }
+        @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #6366f1; } }
+
+    </style>
+</head>
+<body>
+    <!-- VEO Video Intro Container -->
+    <div id="video-intro-container">
+        <video id="intro-video" autoplay muted loop playsinline>
+            <source src="https://storage.googleapis.com/ambassador-prod.appspot.com/videos/v1/by_user/2024-06-30/1719818641957_veo_AURA_Intro.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="video-overlay">
+            <h1 class="overlay-text">What if your future... found you first?</h1>
+        </div>
+    </div>
+
+    <div class="stars" id="stars-bg"></div>
+
+    <div id="app-container">
+        <!-- The form will wrap the entire app to capture the final data -->
+        <form id="survey-form" action="https://formspree.io/f/mqabnywy" method="POST" class="max-w-3xl mx-auto p-4 md:p-8">
+            <!-- Add a hidden input to store the final JSON data -->
+            <input type="hidden" name="surveyResults" id="surveyResultsInput">
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-700 rounded-full h-2 mb-8">
+                <div id="progress-bar" class="bg-indigo-500 h-2 rounded-full progress-bar-fill" style="width: 0%"></div>
+            </div>
+    
+            <!-- Dynamic Content Area -->
+            <div id="content-area">
+                <!-- Content will be injected by JavaScript -->
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // --- Video Intro Logic ---
+        const videoIntroContainer = document.getElementById('video-intro-container');
+        const appContainer = document.getElementById('app-container');
+
+        function runVideoIntro() {
+            // Set a timeout to fade out the video and fade in the app
+            setTimeout(() => {
+                videoIntroContainer.style.opacity = '0';
+                appContainer.style.opacity = '1';
+                setTimeout(() => {
+                    videoIntroContainer.style.display = 'none';
+                    startApp(); // Start the survey after the intro
+                }, 1500); // Wait for fade-out to complete
+            }, 12000); // Play video for 12 seconds
+        }
+        
+        // --- Main App Logic ---
+        const starsBg = document.getElementById('stars-bg');
+        for (let i = 0; i < 100; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            const size = Math.random() * 3 + 1;
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.animationDuration = `${Math.random() * 3 + 2}s`;
+            star.style.animationDelay = `${Math.random() * 3}s`;
+            starsBg.appendChild(star);
+        }
+
+        const contentArea = document.getElementById('content-area');
+        const progressBar = document.getElementById('progress-bar');
+        const surveyForm = document.getElementById('survey-form');
+        const surveyResultsInput = document.getElementById('surveyResultsInput');
+
+        const surveyData = {
+            metadata: {
+                startDate: new Date().toISOString(),
+                endDate: null,
+            }
+        };
+
+        let currentStep = 0;
+
+        async function callGeminiAPI(prompt, elementToUpdateId) {
+            const elementToUpdate = document.getElementById(elementToUpdateId);
+            if (elementToUpdate) {
+                elementToUpdate.innerHTML = '<div class="loader"></div>';
+            }
+
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    if (elementToUpdate) elementToUpdate.innerHTML = `<p class="gemini-response text-slate-300">${text}</p>`;
+                    return text;
+                } else {
+                    throw new Error("Invalid response structure from API.");
+                }
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                if (elementToUpdate) elementToUpdate.innerHTML = `<p class="text-red-400">Sorry, there was an error getting a response.</p>`;
+                return null;
+            }
+        }
+
+        const surveySteps = [
+            // Step 0: Landing
+            {
+                type: 'landing',
+                render: () => `
+                    <div class="text-center fade-in pt-16">
+                        <h2 class="text-4xl font-bold tracking-widest text-white uppercase">AURA</h2>
+                        <div class="typewriter inline-block mt-8">
+                           <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl">Stop searching. Start discovering.</h1>
+                        </div>
+                        <p class="mt-8 text-lg leading-8 text-slate-300 max-w-2xl mx-auto">AURA is a new concept for a career co-pilot that proactively finds opportunities perfectly matched to you. Help us shape it by answering a few questions.</p>
+                        <div class="mt-10">
+                            <button type="button" onclick="nextStep()" class="rounded-md bg-indigo-500 px-4 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">Start the Survey</button>
+                        </div>
+                    </div>
+                `
+            },
+            // ... (rest of the survey steps are the same)
+            // Step 1: Emotional Landscape
+            {
+                type: 'choice', key: 'emotional_landscape',
+                question: "When you think about searching for internships or new career opportunities, which word best describes how you feel?",
+                options: ['Overwhelmed', 'Stressed', 'Anxious', 'Hopeful', 'Excited', 'Annoyed']
+            },
+            // Step 2: Current Behaviors
+            {
+                type: 'textarea', key: 'current_behaviors',
+                question: "Briefly, what's your current process for finding opportunities? (e.g., 'I scroll LinkedIn for an hour a day', 'I check Handshake once a week', 'I ask friends')."
+            },
+            // Step 3: The "Hook"
+            {
+                type: 'textarea', key: 'hook_problem',
+                question: "Let's imagine AURA is your personal co-pilot. To get started, what's the #1 thing you're trying to figure out for your career right now?",
+                placeholder: "e.g., 'Find a summer internship in marketing', 'Figure out if I should learn Python or JavaScript', 'Get my first UX design role'..."
+            },
+            // Step 4: ✨ AI Goal Deconstruction
+            {
+                type: 'ai_response',
+                key: 'ai_goal_deconstruction',
+                question: "Thanks! Based on your goal, here are a few related topics our AI thinks are important. Do these seem relevant?",
+                prompt_template: (goal) => `Based on the career goal "${goal}", brainstorm 4-5 related keywords or sub-topics that are important for this field. Present them as a simple, comma-separated list. Example: Figma, User Research, Prototyping, Case Study.`,
+                trigger_key: 'hook_problem'
+            },
+            // Step 5: Conversational Ladder
+            {
+                type: 'choice', key: 'next_info_needed',
+                question: "To find the perfect opportunity for you, what information would be most important to share next?",
+                options: ['My current skills', 'My location', 'My budget for courses', 'My time availability']
+            },
+            // Step 6: Simulated Nudge
+            {
+                type: 'simulation',
+                render: () => `
+                    <div class="text-center fade-in">
+                        <h2 class="text-2xl font-bold text-slate-100">Okay, got it. Let's fast forward...</h2>
+                        <p class="mt-4 text-lg text-slate-300">Imagine it's a week later. Based on what you've told us, you get this notification from AURA on your phone. </p>
+                        <div class="mt-6 bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-slate-700 text-left max-w-md mx-auto">
+                            <div class="flex justify-between items-start">
+                                <h3 class="text-lg font-bold text-white">Product Management Internship</h3>
+                                <span class="text-xs font-semibold text-white bg-indigo-500 px-2 py-1 rounded-full">92% Match</span>
+                            </div>
+                            <p class="text-sm text-slate-400 mt-1">Qualcomm</p>
+                            <p class="mt-4 text-slate-300">A 12-week immersive program focused on mobile technology product lifecycles. A great fit for students with a technical background interested in business strategy.</p>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <span class="text-xs font-medium bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full">Internship</span>
+                                <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">San Diego</span>
+                                <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">Paid</span>
+                            </div>
+                        </div>
+                        <div class="mt-8">
+                            <button type="button" onclick="nextStep()" class="rounded-md bg-indigo-500 px-4 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400">Continue</button>
+                        </div>
+                    </div>
+                `
+            },
+            // Step 7: Reaction to the Nudge
+            {
+                type: 'choice', key: 'nudge_reaction',
+                question: "How does getting a notification like that 'out of the blue' make you feel?",
+                options: ['Helpful & Magical', 'A bit creepy, but useful', 'Intrusive & Annoying', 'Neutral']
+            },
+            // Step 8: Value of Curation
+            {
+                type: 'choice', key: 'value_prop',
+                question: "What's the biggest value AURA provided in that example?",
+                options: ['Saving me time from searching', 'Finding something I wouldn\'t have found myself', 'Connecting my goals to a real opportunity', 'Reducing my anxiety about missing out']
+            },
+            // Step 9: The Second Job
+            {
+                type: 'choice', key: 'next_problem',
+                question: "Imagine you're interested in that internship. What's the very next problem you have?",
+                options: ['Updating my resume for this specific role', 'Figuring out if I have the right skills', 'Preparing for the interview', 'Writing a cover letter']
+            },
+            // Step 10: ✨ AI Action Plan
+            {
+                type: 'ai_action',
+                key: 'ai_action_plan',
+                question_template: (problem) => `You mentioned your next step is: "${problem}". Let our AI help you with that.`,
+                prompt_template: (problem) => `A user is applying for an internship and their next step is "${problem}". Provide 3 brief, actionable tips to help them. Frame it as a mini action plan with a title and numbered list.`,
+                trigger_key: 'next_problem'
+            },
+            // Step 11: Final Feedback & Advocacy
+            {
+                type: 'slider', key: 'nps_score',
+                question: "On a scale of 0-10, how likely would you be to recommend this AURA concept to a friend?",
+                min: 0, max: 10
+            },
+            // Step 12: Final open-ended question
+            {
+                type: 'textarea', key: 'final_thoughts',
+                question: "Last question: If you had a magic wand, what would you change or add to this concept?"
+            },
+            // Step 13: Thank You & Submit
+            {
+                type: 'thankyou',
+                render: () => {
+                    surveyData.metadata.endDate = new Date().toISOString();
+                    return `
+                    <div class="text-center fade-in">
+                        <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl">Thank You!</h1>
+                        <p class="mt-6 text-lg leading-8 text-slate-300">Your feedback is incredibly valuable. Please click the button below to submit your responses.</p>
+                        <div class="mt-10">
+                            <button type="button" onclick="submitSurvey()" class="rounded-md bg-indigo-500 px-4 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">Submit My Feedback</button>
+                        </div>
+                        <div id="submission-status" class="mt-4"></div>
+                    </div>
+                `}
+            }
+        ];
+
+        function renderStep(stepIndex) {
+            const step = surveySteps[stepIndex];
+            let html = '';
+
+            if (step.type === 'landing' || step.type === 'simulation' || step.type === 'thankyou') {
+                html = step.render();
+            } else {
+                let questionText = step.question;
+                if(step.question_template) {
+                    const triggerValue = surveyData[step.trigger_key];
+                    questionText = step.question_template(triggerValue);
+                }
+
+                html = `<div class="bg-slate-800/50 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-slate-700 fade-in">
+                            <h2 class="text-2xl font-bold text-white">${questionText}</h2>
+                            <div class="mt-6">`;
+                
+                if (step.type === 'choice') {
+                    html += '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">';
+                    step.options.forEach(option => {
+                        html += `<div onclick="selectOption(this, '${step.key}', '${option}')" class="card-option cursor-pointer rounded-lg p-4 text-center font-semibold text-slate-200">
+                                    ${option}
+                                 </div>`;
+                    });
+                    html += '</div>';
+                } else if (step.type === 'textarea') {
+                    html += `<textarea id="textarea-${step.key}" class="w-full h-32 p-3 bg-slate-700 border-2 border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="${step.placeholder || ''}"></textarea>
+                             <button type="button" onclick="saveTextarea('${step.key}')" class="mt-4 rounded-md bg-indigo-500 px-4 py-2 text-base font-semibold text-white shadow-sm hover:bg-indigo-400">Continue</button>`;
+                } else if (step.type === 'slider') {
+                    html += `<input type="range" id="slider-${step.key}" min="${step.min}" max="${step.max}" value="5" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                             <div class="flex justify-between text-xs text-slate-400 mt-2"><span>${step.min}</span><span>${step.max}</span></div>
+                             <div class="text-center mt-4 text-2xl font-bold text-indigo-400"><span id="slider-value">5</span></div>
+                             <button type="button" onclick="saveSlider('${step.key}')" class="mt-6 rounded-md bg-indigo-500 px-4 py-2 text-base font-semibold text-white shadow-sm hover:bg-indigo-400">Continue</button>`;
+                } else if (step.type === 'ai_response') {
+                    html += `<div id="ai-response-${step.key}" class="p-4 bg-slate-900/50 rounded-lg min-h-[100px]"></div>
+                             <div class="mt-6 flex justify-between">
+                                <button type="button" onclick="selectOption(this, '${step.key}_feedback', 'Not Relevant')" class="rounded-md bg-slate-700 px-4 py-2 text-base font-semibold text-slate-300 hover:bg-slate-600">Not Relevant</button>
+                                <button type="button" onclick="selectOption(this, '${step.key}_feedback', 'Relevant')" class="rounded-md bg-indigo-500 px-4 py-2 text-base font-semibold text-white shadow-sm hover:bg-indigo-400">Looks Relevant</button>
+                             </div>`;
+                } else if (step.type === 'ai_action') {
+                    html += `<div id="ai-action-result-${step.key}" class="p-4 bg-slate-900/50 rounded-lg min-h-[150px]">
+                                <button type="button" id="ai-action-button" onclick="triggerAiAction('${step.key}')" class="rounded-md bg-indigo-500 px-4 py-2 text-base font-semibold text-white shadow-sm hover:bg-indigo-400">✨ Generate Mini Action Plan</button>
+                             </div>
+                             <button type="button" onclick="nextStep()" class="mt-6 w-full rounded-md bg-slate-600 px-4 py-2 text-base font-semibold text-white shadow-sm hover:bg-slate-500">Continue</button>`;
+                }
+
+                html += `</div></div>`;
+            }
+
+            contentArea.innerHTML = html;
+
+            if (step.type === 'slider') {
+                const slider = document.getElementById(`slider-${step.key}`);
+                const valueDisplay = document.getElementById('slider-value');
+                slider.addEventListener('input', (e) => {
+                    valueDisplay.textContent = e.target.value;
+                });
+            } else if (step.type === 'ai_response') {
+                const triggerValue = surveyData[step.trigger_key];
+                const prompt = step.prompt_template(triggerValue);
+                callGeminiAPI(prompt, `ai-response-${step.key}`);
+            }
+        }
+        
+        function triggerAiAction(key) {
+            const step = surveySteps.find(s => s.key === key);
+            const button = document.getElementById('ai-action-button');
+            if (button) button.disabled = true;
+            
+            const triggerValue = surveyData[step.trigger_key];
+            const prompt = step.prompt_template(triggerValue);
+            callGeminiAPI(prompt, `ai-action-result-${key}`);
+        }
+
+        function selectOption(element, key, value) {
+            surveyData[key] = value;
+            console.log("Data saved:", surveyData);
+            
+            const parent = element.parentElement;
+            parent.querySelectorAll('.card-option').forEach(el => el.classList.remove('selected'));
+            if(element.classList.contains('card-option')) {
+                 element.classList.add('selected');
+            }
+
+            setTimeout(() => nextStep(), 300);
+        }
+
+        function saveTextarea(key) {
+            const textarea = document.getElementById(`textarea-${key}`);
+            if(textarea.value.trim() === "") {
+                alert("Please provide an answer.");
+                return;
+            }
+            surveyData[key] = textarea.value;
+            console.log("Data saved:", surveyData);
+            nextStep();
+        }
+
+        function saveSlider(key) {
+            const slider = document.getElementById(`slider-${key}`);
+            surveyData[key] = parseInt(slider.value);
+            console.log("Data saved:", surveyData);
+            nextStep();
+        }
+
+        function nextStep() {
+            if (currentStep < surveySteps.length - 1) {
+                const oldContent = contentArea.firstElementChild;
+                if (oldContent) {
+                    oldContent.classList.add('fade-out');
+                    oldContent.addEventListener('animationend', () => {
+                        currentStep++;
+                        updateProgressBar();
+                        renderStep(currentStep);
+                    }, { once: true });
+                } else {
+                    currentStep++;
+                    updateProgressBar();
+                    renderStep(currentStep);
+                }
+            }
+        }
+        
+        function submitSurvey() {
+            const statusDiv = document.getElementById('submission-status');
+            statusDiv.innerHTML = '<p class="text-indigo-400">Submitting your feedback...</p>';
+            
+            // Populate the hidden input with the final JSON data
+            surveyResultsInput.value = JSON.stringify(surveyData, null, 2);
+            
+            // Submit the form
+            surveyForm.submit();
+
+            // Formspree will handle the redirect to a thank you page.
+            // For a better UX, we can show a final message here.
+            setTimeout(() => {
+                 contentArea.innerHTML = `
+                    <div class="text-center fade-in">
+                        <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl">Submission Sent!</h1>
+                        <p class="mt-6 text-lg leading-8 text-slate-300">Thank you for helping us build the future of career discovery.</p>
+                    </div>
+                `;
+            }, 1500); // Give time for the form submission to initiate
+        }
+        
+        function updateProgressBar() {
+            const progress = (currentStep / (surveySteps.length - 2)) * 100;
+            progressBar.style.width = `${Math.min(progress, 100)}%`;
+        }
+
+        // --- Run App ---
+        window.onload = () => {
+            runVideoIntro();
+        };
+        
+        function startApp() {
+            renderStep(currentStep);
+        }
+
+    </script>
+</body>
+</html>
