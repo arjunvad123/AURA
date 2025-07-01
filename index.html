@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AURA - Your Career Co-Pilot</title>
+    <title>AURA - Your Personal Co-Pilot</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -166,15 +166,14 @@
         const appContainer = document.getElementById('app-container');
 
         function runVideoIntro() {
-            // Set a timeout to fade out the video and fade in the app
             setTimeout(() => {
                 videoIntroContainer.style.opacity = '0';
                 appContainer.style.opacity = '1';
                 setTimeout(() => {
                     videoIntroContainer.style.display = 'none';
-                    startApp(); // Start the survey after the intro
-                }, 1500); // Wait for fade-out to complete
-            }, 12000); // Play video for 12 seconds
+                    startApp(); 
+                }, 1500);
+            }, 12000); 
         }
         
         // --- Main App Logic ---
@@ -206,7 +205,8 @@
 
         let currentStep = 0;
 
-        async function callGeminiAPI(prompt, elementToUpdateId) {
+        async function callGeminiAPI(prompt, elementToUpdateId, buttonsToManage = []) {
+            buttonsToManage.forEach(btn => btn.disabled = true);
             const elementToUpdate = document.getElementById(elementToUpdateId);
             if (elementToUpdate) {
                 elementToUpdate.innerHTML = '<div class="loader"></div>';
@@ -235,8 +235,10 @@
                 }
             } catch (error) {
                 console.error("Gemini API Error:", error);
-                if (elementToUpdate) elementToUpdate.innerHTML = `<p class="text-red-400">Sorry, there was an error getting a response.</p>`;
+                if (elementToUpdate) elementToUpdate.innerHTML = `<p class="text-red-400">Sorry, there was an error getting a response. Please try again.</p>`;
                 return null;
+            } finally {
+                buttonsToManage.forEach(btn => btn.disabled = false);
             }
         }
 
@@ -250,109 +252,139 @@
                         <div class="typewriter inline-block mt-8">
                            <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl">Stop searching. Start discovering.</h1>
                         </div>
-                        <p class="mt-8 text-lg leading-8 text-slate-300 max-w-2xl mx-auto">AURA is a new concept for a career co-pilot that proactively finds opportunities perfectly matched to you. Help us shape it by answering a few questions.</p>
+                        <p class="mt-8 text-lg leading-8 text-slate-300 max-w-2xl mx-auto">AURA is a new concept for a personal co-pilot that proactively finds opportunities perfectly matched to you. Help us shape it by answering a few questions.</p>
                         <div class="mt-10">
-                            <button type="button" onclick="nextStep()" class="rounded-md bg-indigo-500 px-4 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">Start the Survey</button>
+                            <button type="button" onclick="nextStep()" class="rounded-md bg-indigo-500 px-4 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">Get Started</button>
                         </div>
                     </div>
                 `
             },
-            // ... (rest of the survey steps are the same)
-            // Step 1: Emotional Landscape
+            // NEW Step 1: Persona Selection
+            {
+                type: 'choice', key: 'user_persona',
+                question: "To start, which of these best describes you?",
+                options: ['Student or Recent Graduate', 'Experienced Professional', 'Career Changer']
+            },
+            // Step 2: Emotional Landscape
             {
                 type: 'choice', key: 'emotional_landscape',
-                question: "When you think about searching for internships or new career opportunities, which word best describes how you feel?",
+                question: "When you think about searching for new opportunities, which word best describes how you feel?",
                 options: ['Overwhelmed', 'Stressed', 'Anxious', 'Hopeful', 'Excited', 'Annoyed']
             },
-            // Step 2: Current Behaviors
-            {
-                type: 'textarea', key: 'current_behaviors',
-                question: "Briefly, what's your current process for finding opportunities? (e.g., 'I scroll LinkedIn for an hour a day', 'I check Handshake once a week', 'I ask friends')."
-            },
-            // Step 3: The "Hook"
+            // Step 3: The "Hook" - Now with dynamic text
             {
                 type: 'textarea', key: 'hook_problem',
-                question: "Let's imagine AURA is your personal co-pilot. To get started, what's the #1 thing you're trying to figure out for your career right now?",
-                placeholder: "e.g., 'Find a summer internship in marketing', 'Figure out if I should learn Python or JavaScript', 'Get my first UX design role'..."
+                getQuestion: () => {
+                    const persona = surveyData.user_persona;
+                    if (persona === 'Experienced Professional') {
+                        return "Let's imagine AURA is your personal co-pilot. To get started, what's a key professional goal you're focused on right now?";
+                    }
+                    return "Let's imagine AURA is your personal co-pilot. To get started, what's the #1 thing you're trying to figure out for your career right now?";
+                },
+                getPlaceholder: () => {
+                    const persona = surveyData.user_persona;
+                    if (persona === 'Experienced Professional') {
+                        return "e.g., 'Find a strategic advisor for my startup', 'Learn about AI implementation', 'Expand my professional network'...";
+                    }
+                    return "e.g., 'Find a summer internship in marketing', 'Learn Python or JavaScript', 'Get my first UX design role'...";
+                }
             },
-            // Step 4: ✨ AI Goal Deconstruction
+            // Step 4: AI Goal Deconstruction
             {
                 type: 'ai_response',
                 key: 'ai_goal_deconstruction',
                 question: "Thanks! Based on your goal, here are a few related topics our AI thinks are important. Do these seem relevant?",
-                prompt_template: (goal) => `Based on the career goal "${goal}", brainstorm 4-5 related keywords or sub-topics that are important for this field. Present them as a simple, comma-separated list. Example: Figma, User Research, Prototyping, Case Study.`,
+                prompt_template: (goal) => `Based on the professional goal "${goal}", brainstorm 4-5 related keywords or sub-topics that are important for this field. Present them as a simple, comma-separated list.`,
                 trigger_key: 'hook_problem'
             },
-            // Step 5: Conversational Ladder
-            {
-                type: 'choice', key: 'next_info_needed',
-                question: "To find the perfect opportunity for you, what information would be most important to share next?",
-                options: ['My current skills', 'My location', 'My budget for courses', 'My time availability']
-            },
-            // Step 6: Simulated Nudge
+            // Step 5: Simulated Nudge - Now with dynamic content
             {
                 type: 'simulation',
-                render: () => `
-                    <div class="text-center fade-in">
-                        <h2 class="text-2xl font-bold text-slate-100">Okay, got it. Let's fast forward...</h2>
-                        <p class="mt-4 text-lg text-slate-300">Imagine it's a week later. Based on what you've told us, you get this notification from AURA on your phone. </p>
-                        <div class="mt-6 bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-slate-700 text-left max-w-md mx-auto">
+                render: () => {
+                    const persona = surveyData.user_persona;
+                    let cardHtml = '';
+                    if (persona === 'Experienced Professional') {
+                        cardHtml = `
+                            <div class="flex justify-between items-start">
+                                <h3 class="text-lg font-bold text-white">AI Strategy & Scaling Seminar</h3>
+                                <span class="text-xs font-semibold text-white bg-indigo-500 px-2 py-1 rounded-full">95% Match</span>
+                            </div>
+                            <p class="text-sm text-slate-400 mt-1">TechCrunch Events</p>
+                            <p class="mt-4 text-slate-300">A closed-door seminar with industry leaders on implementing large-scale AI models and go-to-market strategy.</p>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <span class="text-xs font-medium bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full">Seminar</span>
+                                <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">Executive</span>
+                                <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">Networking</span>
+                            </div>
+                        `;
+                    } else {
+                         cardHtml = `
                             <div class="flex justify-between items-start">
                                 <h3 class="text-lg font-bold text-white">Product Management Internship</h3>
                                 <span class="text-xs font-semibold text-white bg-indigo-500 px-2 py-1 rounded-full">92% Match</span>
                             </div>
                             <p class="text-sm text-slate-400 mt-1">Qualcomm</p>
-                            <p class="mt-4 text-slate-300">A 12-week immersive program focused on mobile technology product lifecycles. A great fit for students with a technical background interested in business strategy.</p>
+                            <p class="mt-4 text-slate-300">A 12-week immersive program focused on mobile technology product lifecycles. A great fit for students with a technical background.</p>
                             <div class="mt-4 flex flex-wrap gap-2">
                                 <span class="text-xs font-medium bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full">Internship</span>
                                 <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">San Diego</span>
                                 <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">Paid</span>
                             </div>
+                        `;
+                    }
+
+                    return `
+                    <div class="text-center fade-in">
+                        <h2 class="text-2xl font-bold text-slate-100">Okay, got it. Let's fast forward...</h2>
+                        <p class="mt-4 text-lg text-slate-300">Imagine it's a week later. Based on what you've told us, you get this notification from AURA. </p>
+                        <div class="mt-6 bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-slate-700 text-left max-w-md mx-auto">
+                            ${cardHtml}
                         </div>
                         <div class="mt-8">
                             <button type="button" onclick="nextStep()" class="rounded-md bg-indigo-500 px-4 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400">Continue</button>
                         </div>
                     </div>
                 `
+                }
             },
-            // Step 7: Reaction to the Nudge
+            // Step 6: Reaction to the Nudge
             {
                 type: 'choice', key: 'nudge_reaction',
                 question: "How does getting a notification like that 'out of the blue' make you feel?",
                 options: ['Helpful & Magical', 'A bit creepy, but useful', 'Intrusive & Annoying', 'Neutral']
             },
-            // Step 8: Value of Curation
+            // Step 7: Value of Curation
             {
                 type: 'choice', key: 'value_prop',
                 question: "What's the biggest value AURA provided in that example?",
                 options: ['Saving me time from searching', 'Finding something I wouldn\'t have found myself', 'Connecting my goals to a real opportunity', 'Reducing my anxiety about missing out']
             },
-            // Step 9: The Second Job
+            // Step 8: The Second Job
             {
                 type: 'choice', key: 'next_problem',
-                question: "Imagine you're interested in that internship. What's the very next problem you have?",
-                options: ['Updating my resume for this specific role', 'Figuring out if I have the right skills', 'Preparing for the interview', 'Writing a cover letter']
+                question: "Imagine you're interested in that opportunity. What's the very next problem you have?",
+                options: ['Preparing for it (e.g., resume/skills)', 'Finding time in my schedule', 'Evaluating if it\'s the right fit', 'Connecting with people involved']
             },
-            // Step 10: ✨ AI Action Plan
+            // Step 9: AI Action Plan
             {
                 type: 'ai_action',
                 key: 'ai_action_plan',
                 question_template: (problem) => `You mentioned your next step is: "${problem}". Let our AI help you with that.`,
-                prompt_template: (problem) => `A user is applying for an internship and their next step is "${problem}". Provide 3 brief, actionable tips to help them. Frame it as a mini action plan with a title and numbered list.`,
+                prompt_template: (problem) => `A user is considering a professional opportunity and their next step is "${problem}". Provide 3 brief, actionable tips to help them. Frame it as a mini action plan with a title and numbered list.`,
                 trigger_key: 'next_problem'
             },
-            // Step 11: Final Feedback & Advocacy
+            // Step 10: Final Feedback & Advocacy
             {
                 type: 'slider', key: 'nps_score',
-                question: "On a scale of 0-10, how likely would you be to recommend this AURA concept to a friend?",
+                question: "On a scale of 0-10, how likely would you be to recommend this AURA concept to a friend or colleague?",
                 min: 0, max: 10
             },
-            // Step 12: Final open-ended question
+            // Step 11: Final open-ended question
             {
                 type: 'textarea', key: 'final_thoughts',
                 question: "Last question: If you had a magic wand, what would you change or add to this concept?"
             },
-            // Step 13: Thank You & Submit
+            // Step 12: Thank You & Submit
             {
                 type: 'thankyou',
                 render: () => {
@@ -377,7 +409,7 @@
             if (step.type === 'landing' || step.type === 'simulation' || step.type === 'thankyou') {
                 html = step.render();
             } else {
-                let questionText = step.question;
+                let questionText = typeof step.getQuestion === 'function' ? step.getQuestion() : step.question;
                 if(step.question_template) {
                     const triggerValue = surveyData[step.trigger_key];
                     questionText = step.question_template(triggerValue);
@@ -396,7 +428,8 @@
                     });
                     html += '</div>';
                 } else if (step.type === 'textarea') {
-                    html += `<textarea id="textarea-${step.key}" class="w-full h-32 p-3 bg-slate-700 border-2 border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="${step.placeholder || ''}"></textarea>
+                    const placeholder = typeof step.getPlaceholder === 'function' ? step.getPlaceholder() : (step.placeholder || '');
+                    html += `<textarea id="textarea-${step.key}" class="w-full h-32 p-3 bg-slate-700 border-2 border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="${placeholder}"></textarea>
                              <button type="button" onclick="saveTextarea('${step.key}')" class="mt-4 rounded-md bg-indigo-500 px-4 py-2 text-base font-semibold text-white shadow-sm hover:bg-indigo-400">Continue</button>`;
                 } else if (step.type === 'slider') {
                     html += `<input type="range" id="slider-${step.key}" min="${step.min}" max="${step.max}" value="5" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
@@ -430,18 +463,19 @@
             } else if (step.type === 'ai_response') {
                 const triggerValue = surveyData[step.trigger_key];
                 const prompt = step.prompt_template(triggerValue);
-                callGeminiAPI(prompt, `ai-response-${step.key}`);
+                const buttons = contentArea.querySelectorAll('button');
+                callGeminiAPI(prompt, `ai-response-${step.key}`, Array.from(buttons));
             }
         }
         
         function triggerAiAction(key) {
             const step = surveySteps.find(s => s.key === key);
             const button = document.getElementById('ai-action-button');
-            if (button) button.disabled = true;
+            const continueButton = button.parentElement.nextElementSibling;
             
             const triggerValue = surveyData[step.trigger_key];
             const prompt = step.prompt_template(triggerValue);
-            callGeminiAPI(prompt, `ai-action-result-${key}`);
+            callGeminiAPI(prompt, `ai-action-result-${key}`, [button, continueButton]);
         }
 
         function selectOption(element, key, value) {
@@ -503,8 +537,6 @@
             // Submit the form
             surveyForm.submit();
 
-            // Formspree will handle the redirect to a thank you page.
-            // For a better UX, we can show a final message here.
             setTimeout(() => {
                  contentArea.innerHTML = `
                     <div class="text-center fade-in">
@@ -512,7 +544,7 @@
                         <p class="mt-6 text-lg leading-8 text-slate-300">Thank you for helping us build the future of career discovery.</p>
                     </div>
                 `;
-            }, 1500); // Give time for the form submission to initiate
+            }, 1500);
         }
         
         function updateProgressBar() {
