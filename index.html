@@ -211,8 +211,8 @@
             if (elementToUpdate) {
                 elementToUpdate.innerHTML = '<div class="loader"></div>';
             }
-
-            const apiKey = ""; 
+            
+            const apiKey = "AIzaSyAM_6j6kY82Bdx0wG-WtutERxSViukMudI"; 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             
             const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
@@ -223,19 +223,29 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    throw new Error(`API call failed with status: ${response.status}. Body: ${errorBody}`);
+                }
                 const result = await response.json();
                 
                 if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
                     const text = result.candidates[0].content.parts[0].text;
-                    if (elementToUpdate) elementToUpdate.innerHTML = `<p class="gemini-response text-slate-300">${text}</p>`;
+                    if (elementToUpdate) {
+                        elementToUpdate.innerHTML = `<p class="gemini-response text-slate-300">${text}</p>`;
+                    }
                     return text;
                 } else {
+                     if (result.promptFeedback && result.promptFeedback.blockReason) {
+                        throw new Error(`Request blocked: ${result.promptFeedback.blockReason}`);
+                    }
                     throw new Error("Invalid response structure from API.");
                 }
             } catch (error) {
                 console.error("Gemini API Error:", error);
-                if (elementToUpdate) elementToUpdate.innerHTML = `<p class="text-red-400">Sorry, there was an error getting a response. Please try again.</p>`;
+                if (elementToUpdate) {
+                    elementToUpdate.innerHTML = `<p class="text-red-400 text-sm">Sorry, the AI is currently unavailable. Please click a button to continue.</p>`;
+                }
                 return null;
             } finally {
                 buttonsToManage.forEach(btn => btn.disabled = false);
@@ -297,54 +307,52 @@
                 prompt_template: (goal) => `Based on the professional goal "${goal}", brainstorm 4-5 related keywords or sub-topics that are important for this field. Present them as a simple, comma-separated list.`,
                 trigger_key: 'hook_problem'
             },
-            // Step 5: Simulated Nudge - Now with dynamic content
+            // Step 5: Simulated Nudge - Now fully dynamic with AI
             {
                 type: 'simulation',
-                render: () => {
+                render: async () => {
                     const persona = surveyData.user_persona;
-                    let cardHtml = '';
-                    if (persona === 'Experienced Professional') {
-                        cardHtml = `
-                            <div class="flex justify-between items-start">
-                                <h3 class="text-lg font-bold text-white">AI Strategy & Scaling Seminar</h3>
-                                <span class="text-xs font-semibold text-white bg-indigo-500 px-2 py-1 rounded-full">95% Match</span>
+                    const goal = surveyData.hook_problem || "your goal";
+                    
+                    const cardContainer = document.getElementById('content-area');
+                    cardContainer.innerHTML = `
+                        <div class="text-center fade-in">
+                            <h2 class="text-2xl font-bold text-slate-100">Okay, got it. Let's fast forward...</h2>
+                            <p class="mt-4 text-lg text-slate-300">Imagine it's a week later. Based on what you've told us, you get this notification from AURA. </p>
+                            <div id="dynamic-card-container" class="mt-6 bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-slate-700 text-left max-w-md mx-auto min-h-[180px]">
+                                <div class="loader"></div>
                             </div>
-                            <p class="text-sm text-slate-400 mt-1">TechCrunch Events</p>
-                            <p class="mt-4 text-slate-300">A closed-door seminar with industry leaders on implementing large-scale AI models and go-to-market strategy.</p>
-                            <div class="mt-4 flex flex-wrap gap-2">
-                                <span class="text-xs font-medium bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full">Seminar</span>
-                                <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">Executive</span>
-                                <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">Networking</span>
+                            <div class="mt-8">
+                                <button type="button" id="simulation-continue-btn" onclick="nextStep()" class="rounded-md bg-indigo-500 px-4 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400" disabled>Continue</button>
                             </div>
-                        `;
-                    } else {
-                         cardHtml = `
-                            <div class="flex justify-between items-start">
-                                <h3 class="text-lg font-bold text-white">Product Management Internship</h3>
-                                <span class="text-xs font-semibold text-white bg-indigo-500 px-2 py-1 rounded-full">92% Match</span>
-                            </div>
-                            <p class="text-sm text-slate-400 mt-1">Qualcomm</p>
-                            <p class="mt-4 text-slate-300">A 12-week immersive program focused on mobile technology product lifecycles. A great fit for students with a technical background.</p>
-                            <div class="mt-4 flex flex-wrap gap-2">
-                                <span class="text-xs font-medium bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full">Internship</span>
-                                <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">San Diego</span>
-                                <span class="text-xs font-medium bg-slate-700 text-slate-300 px-2 py-1 rounded-full">Paid</span>
-                            </div>
-                        `;
-                    }
+                        </div>`;
 
-                    return `
-                    <div class="text-center fade-in">
-                        <h2 class="text-2xl font-bold text-slate-100">Okay, got it. Let's fast forward...</h2>
-                        <p class="mt-4 text-lg text-slate-300">Imagine it's a week later. Based on what you've told us, you get this notification from AURA. </p>
-                        <div class="mt-6 bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-slate-700 text-left max-w-md mx-auto">
-                            ${cardHtml}
-                        </div>
-                        <div class="mt-8">
-                            <button type="button" onclick="nextStep()" class="rounded-md bg-indigo-500 px-4 py-3 text-lg font-semibold text-white shadow-lg hover:bg-indigo-400">Continue</button>
-                        </div>
-                    </div>
-                `
+                    const prompt = `A user's persona is '${persona}' and their goal is '${goal}'. Generate a single, realistic, mock opportunity for them. Provide a title, a plausible company/organization name, a short description, and three relevant tags. Return ONLY a JSON object with keys: "title", "company", "description", "tags" (an array of 3 strings). Example: {"title": "UX Design Internship", "company": "Innovatech", "description": "A 12-week program focused on mobile app prototyping.", "tags": ["Internship", "UX Design", "Paid"]}`;
+                    
+                    try {
+                        const responseText = await callGeminiAPI(prompt, 'dynamic-card-container');
+                        const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const generatedData = JSON.parse(cleanedText);
+                        surveyData.generated_recommendation = generatedData; // Save it
+                        
+                        const cardHtml = `
+                            <div class="flex justify-between items-start">
+                                <h3 class="text-lg font-bold text-white">${generatedData.title}</h3>
+                                <span class="text-xs font-semibold text-white bg-indigo-500 px-2 py-1 rounded-full">94% Match</span>
+                            </div>
+                            <p class="text-sm text-slate-400 mt-1">${generatedData.company}</p>
+                            <p class="mt-4 text-slate-300">${generatedData.description}</p>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                ${generatedData.tags.map(tag => `<span class="text-xs font-medium bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full">${tag}</span>`).join('')}
+                            </div>
+                        `;
+                        document.getElementById('dynamic-card-container').innerHTML = cardHtml;
+                    } catch (e) {
+                        console.error("Failed to generate or parse recommendation:", e);
+                        document.getElementById('dynamic-card-container').innerHTML = `<p class="text-red-400">Could not generate a dynamic recommendation. Using a default example.</p>`;
+                    } finally {
+                        document.getElementById('simulation-continue-btn').disabled = false;
+                    }
                 }
             },
             // Step 6: Reaction to the Nudge
@@ -370,7 +378,14 @@
                 type: 'ai_action',
                 key: 'ai_action_plan',
                 question_template: (problem) => `You mentioned your next step is: "${problem}". Let our AI help you with that.`,
-                prompt_template: (problem) => `A user is considering a professional opportunity and their next step is "${problem}". Provide 3 brief, actionable tips to help them. Frame it as a mini action plan with a title and numbered list.`,
+                prompt_template: (data) => {
+                    const problem = data.next_problem;
+                    const rec = data.generated_recommendation;
+                    if (rec && rec.title && rec.company) {
+                       return `A user was shown an opportunity called "${rec.title} at ${rec.company}". Their next problem is "${problem}". Provide 3 brief, actionable tips to help them with this specific situation. Frame it as a mini action plan with a title and numbered list.`;
+                    }
+                    return `A user's next problem is "${problem}". Provide 3 brief, actionable tips to help them. Frame it as a mini action plan with a title and numbered list.`;
+                },
                 trigger_key: 'next_problem'
             },
             // Step 10: Final Feedback & Advocacy
@@ -402,11 +417,16 @@
             }
         ];
 
-        function renderStep(stepIndex) {
+        async function renderStep(stepIndex) {
             const step = surveySteps[stepIndex];
             let html = '';
 
-            if (step.type === 'landing' || step.type === 'simulation' || step.type === 'thankyou') {
+            if (step.type === 'simulation') {
+                await step.render(); // Handle async rendering for simulation
+                return;
+            }
+            
+            if (step.type === 'landing' || step.type === 'thankyou') {
                 html = step.render();
             } else {
                 let questionText = typeof step.getQuestion === 'function' ? step.getQuestion() : step.question;
@@ -422,7 +442,8 @@
                 if (step.type === 'choice') {
                     html += '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">';
                     step.options.forEach(option => {
-                        html += `<div onclick="selectOption(this, '${step.key}', '${option}')" class="card-option cursor-pointer rounded-lg p-4 text-center font-semibold text-slate-200">
+                        const escapedOption = option.replace(/'/g, "\\'");
+                        html += `<div onclick="selectOption(this, '${step.key}', '${escapedOption}')" class="card-option cursor-pointer rounded-lg p-4 text-center font-semibold text-slate-200">
                                     ${option}
                                  </div>`;
                     });
@@ -473,8 +494,7 @@
             const button = document.getElementById('ai-action-button');
             const continueButton = button.parentElement.nextElementSibling;
             
-            const triggerValue = surveyData[step.trigger_key];
-            const prompt = step.prompt_template(triggerValue);
+            const prompt = step.prompt_template(surveyData); // Pass full surveyData
             callGeminiAPI(prompt, `ai-action-result-${key}`, [button, continueButton]);
         }
 
@@ -527,24 +547,47 @@
             }
         }
         
-        function submitSurvey() {
+        async function submitSurvey() {
             const statusDiv = document.getElementById('submission-status');
             statusDiv.innerHTML = '<p class="text-indigo-400">Submitting your feedback...</p>';
             
-            // Populate the hidden input with the final JSON data
             surveyResultsInput.value = JSON.stringify(surveyData, null, 2);
             
-            // Submit the form
-            surveyForm.submit();
+            const formData = new FormData(surveyForm);
+            
+            try {
+                const response = await fetch(surveyForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
 
-            setTimeout(() => {
-                 contentArea.innerHTML = `
-                    <div class="text-center fade-in">
-                        <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl">Submission Sent!</h1>
-                        <p class="mt-6 text-lg leading-8 text-slate-300">Thank you for helping us build the future of career discovery.</p>
-                    </div>
-                `;
-            }, 1500);
+                if (response.ok) {
+                    contentArea.innerHTML = `
+                        <div class="text-center fade-in">
+                            <h2 class="text-2xl font-bold tracking-widest text-white uppercase">🪐 Founder’s Message</h2>
+                            <div class="mt-6 max-w-2xl mx-auto text-left text-slate-300 space-y-4 italic border-l-2 border-indigo-500 pl-6">
+                               <p>When I first started building AURA, it was never just about career guidance.</p>
+                               <p>It was about building something far deeper — a system that could understand you, not just respond to you. A mirror that reflects not who you are today, but who you could become tomorrow.</p>
+                               <p>At its core, AURA is an attempt to create an AI that feels less like a tool and more like an extension of your thinking — quietly working in the background to help you act before you even know what to ask. Whether that’s recommending a life-changing internship or something as small as the perfect movie to watch tonight — AURA’s mission is the same: make your next move obvious.</p>
+                               <p>We start with career because that’s where the stakes are high and the need is clear. But this is only the beginning.</p>
+                               <p>As AURA evolves, it will guide not just what you do, but how you live. A thinking partner that understands your rhythm, nudges you at the right moment, and offers you a path — not just information.</p>
+                               <p>We want to make life feel less like an endless list of decisions — and more like a well-timed series of possibilities.</p>
+                               <p class="font-bold not-italic mt-6">Not a search box.<br>Not a chatbot.<br>AURA is your second mind.</p>
+                            </div>
+                             <p class="mt-6 font-semibold text-white">— Arjun Vad</p>
+                             <p class="text-sm text-slate-400">Co-Founder, AURA by Agencity</p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Form submission failed.');
+                }
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerHTML = '<p class="text-red-400">Sorry, there was an error submitting your feedback. Please try again.</p>';
+            }
         }
         
         function updateProgressBar() {
